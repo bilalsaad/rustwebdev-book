@@ -6,34 +6,43 @@ mod types;
 
 use handle_errors::return_error;
 use store::Store;
+use tracing_subscriber::fmt::format::FmtSpan;
 use warp::{http::Method, Filter};
 
 #[tokio::main]
 async fn main() {
-    log4rs::init_file("log4rs.yaml", Default::default()).expect("failed to init logging");
-
-    log::error!("This is an error");
-    log::info!("This is an info");
-    log::warn!("This is an warining");
+    let log_filter =
+        std::env::var("RUST_LOG").unwrap_or_else(|_| "book=info,warp=error".to_owned());
 
     let store = Store::new();
 
     let store_filter = warp::any().map(move || store.clone());
+
+    tracing_subscriber::fmt()
+        // Use the filter we built above to determine which traces to record
+        .with_env_filter(log_filter)
+        // Record an event when each span closes, this can be used for routes
+        // duration.
+        .with_span_events(FmtSpan::CLOSE)
+        .init();
 
     let cors = warp::cors()
         .allow_any_origin()
         .allow_header("content-type")
         .allow_methods(&[Method::PUT, Method::DELETE, Method::GET, Method::POST]);
 
-    let id_filter = warp::any().map(|| uuid::Uuid::new_v4().to_string());
-
     let get_questions = warp::get()
         .and(warp::path("questions"))
         .and(warp::path::end())
         .and(warp::query())
         .and(store_filter.clone())
-        .and(id_filter)
-        .and_then(routes::question::get_questions);
+        .and_then(routes::question::get_questions)
+        .with(warp::trace(|info| {
+            tracing::info_span!("get questions request",
+                method = %info.method(),
+                path = %info.path(),
+                id = %uuid::Uuid::new_v4(),)
+        }));
 
     let add_question = warp::post()
         .and(warp::path("questions"))
@@ -64,26 +73,13 @@ async fn main() {
         .and(store_filter.clone())
         .and_then(routes::question::delete_question);
 
-    let log = warp::log::custom(|info| {
-        log::info!(
-            "{} {} {} {:?} from {} with {:?}",
-            info.method(),
-            info.path(),
-            info.status(),
-            // TODO: bad unwrap
-            info.elapsed(),
-            info.remote_addr().unwrap(),
-            info.request_headers()
-        );
-    });
-
     let routes = get_questions
         .or(add_question)
         .or(add_answer)
         .or(update_question)
         .or(delete_question)
         .with(cors)
-        .with(log)
+        .with(warp::trace::request())
         .recover(return_error);
 
     warp::serve(routes).run(([127, 0, 0, 1], 3031)).await;
