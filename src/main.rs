@@ -25,11 +25,14 @@ async fn main() {
         .allow_header("content-type")
         .allow_methods(&[Method::PUT, Method::DELETE, Method::GET, Method::POST]);
 
+    let id_filter = warp::any().map(|| uuid::Uuid::new_v4().to_string());
+
     let get_questions = warp::get()
         .and(warp::path("questions"))
         .and(warp::path::end())
         .and(warp::query())
         .and(store_filter.clone())
+        .and(id_filter)
         .and_then(routes::question::get_questions);
 
     let add_question = warp::post()
@@ -61,12 +64,26 @@ async fn main() {
         .and(store_filter.clone())
         .and_then(routes::question::delete_question);
 
+    let log = warp::log::custom(|info| {
+        log::info!(
+            "{} {} {} {:?} from {} with {:?}",
+            info.method(),
+            info.path(),
+            info.status(),
+            // TODO: bad unwrap
+            info.elapsed(),
+            info.remote_addr().unwrap(),
+            info.request_headers()
+        );
+    });
+
     let routes = get_questions
         .or(add_question)
         .or(add_answer)
         .or(update_question)
         .or(delete_question)
         .with(cors)
+        .with(log)
         .recover(return_error);
 
     warp::serve(routes).run(([127, 0, 0, 1], 3031)).await;

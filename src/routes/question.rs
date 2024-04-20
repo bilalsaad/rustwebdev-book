@@ -10,13 +10,17 @@ use warp::http::StatusCode;
 pub async fn get_questions(
     params: HashMap<String, String>,
     store: Store,
+    id: String,
 ) -> Result<impl warp::Reply, warp::Rejection> {
+    log::info!("{} Start querying questions", id);
     let res: Vec<Question> = store.questions.read().await.values().cloned().collect();
     if !params.is_empty() {
         let pagination = extract_pagination(params)?;
-
+        log::info!("{} Pagination set {:?}", id, pagination);
         let res = &res[pagination.start..pagination.end];
         return Ok(warp::reply::json(&res));
+    } else {
+        log::info!("{} No pagantion set", id);
     }
     Ok(warp::reply::json(&res))
 }
