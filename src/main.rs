@@ -10,6 +10,12 @@ use warp::{http::Method, Filter};
 
 #[tokio::main]
 async fn main() {
+    env_logger::init();
+
+    log::error!("This is an error");
+    log::info!("This is an info");
+    log::warn!("This is an warining");
+
     let store = Store::new();
 
     let store_filter = warp::any().map(move || store.clone());
