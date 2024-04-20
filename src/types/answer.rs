@@ -8,3 +8,10 @@ pub struct Answer {
     pub content: String,
     pub question_id: super::question::QuestionId,
 }
+
+/// Used to create Answer's as id is an output param.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct NewAnswer {
+    pub content: String,
+    pub question_id: super::question::QuestionId,
+}
