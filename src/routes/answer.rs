@@ -1,6 +1,7 @@
 use crate::store::Store;
 use crate::types::answer::{Answer, AnswerId};
 use crate::types::question::QuestionId;
+use handle_errors::Error;
 use std::collections::HashMap;
 use warp::http::StatusCode;
 
@@ -11,9 +12,15 @@ pub async fn add_answer(
 ) -> Result<impl warp::Reply, warp::Rejection> {
     let answer = Answer {
         // TODO: make this a random uuid or something.
-        id: AnswerId("1".to_string()),
+        id: AnswerId(1),
         content: params.get("content").unwrap().to_string(),
-        question_id: QuestionId(params.get("questionId").unwrap().to_string()),
+        question_id: QuestionId(
+            params
+                .get("questionId")
+                .unwrap()
+                .parse::<i32>()
+                .map_err(Error::ParseError)?,
+        ),
     };
     store
         .answers

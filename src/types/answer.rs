@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
-pub struct AnswerId(pub String);
+pub struct AnswerId(pub i32);
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Answer {
