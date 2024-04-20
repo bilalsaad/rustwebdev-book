@@ -1,71 +1,19 @@
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::RwLock;
 
 mod error;
+mod store;
+mod types;
 
+use store::Store;
+use types::{
+    answer::{Answer, AnswerId},
+    pagination::extract_pagination,
+    question::{Question, QuestionId},
+};
 use warp::{
     http::{Method, StatusCode},
     Filter,
 };
-
-#[derive(Clone)]
-struct Store {
-    questions: Arc<RwLock<HashMap<QuestionId, Question>>>,
-    answers: Arc<RwLock<HashMap<AnswerId, Answer>>>,
-}
-
-impl Store {
-    /// Creates a new store w/ contents from questions.json.
-    fn new() -> Self {
-        Store {
-            questions: Arc::new(RwLock::new(Self::init())),
-            answers: Arc::new(RwLock::new(HashMap::new())),
-        }
-    }
-
-    fn init() -> HashMap<QuestionId, Question> {
-        let file = include_str!("../question.json");
-        serde_json::from_str(file).expect("can't read questions.json")
-    }
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-struct Question {
-    id: QuestionId,
-    title: String,
-    content: String,
-    tags: Option<Vec<String>>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
-struct QuestionId(String);
-
-/// Start and end cursors of questions to return.
-#[derive(Debug)]
-struct Pagination {
-    start: usize,
-    end: usize,
-}
-
-fn extract_pagination(params: HashMap<String, String>) -> Result<Pagination, error::Error> {
-    if params.contains_key("start") && params.contains_key("end") {
-        return Ok(Pagination {
-            start: params
-                .get("start")
-                .unwrap()
-                .parse::<usize>()
-                .map_err(error::Error::ParseError)?,
-            end: params
-                .get("end")
-                .unwrap()
-                .parse::<usize>()
-                .map_err(error::Error::ParseError)?,
-        });
-    }
-    Err(error::Error::MissingParameters)
-}
 
 async fn get_questions(
     params: HashMap<String, String>,
@@ -130,20 +78,10 @@ async fn update_question(
 
 /// Delete handler for Question
 async fn delete_question(id: String, store: Store) -> Result<impl warp::Reply, warp::Rejection> {
-    match store.questions.write().await.remove(&QuestionId(id)) {
+    match store.questions.write().await.remove(&&QuestionId(id)) {
         Some(_) => Ok(warp::reply::with_status("Question deleted", StatusCode::OK)),
         None => return Err(warp::reject::custom(error::Error::QuestionNotFound)),
     }
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
-struct AnswerId(String);
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-struct Answer {
-    id: AnswerId,
-    content: String,
-    question_id: QuestionId,
 }
 
 #[tokio::main]
