@@ -1,17 +1,12 @@
-#![warn(
-    clippy::all
-)]
+#![warn(clippy::all)]
 
+mod routes;
 mod store;
 mod types;
-mod routes;
 
-use store::Store;
-use warp::{
-    http::Method,
-    Filter,
-};
 use handle_errors::return_error;
+use store::Store;
+use warp::{http::Method, Filter};
 
 #[tokio::main]
 async fn main() {
