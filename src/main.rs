@@ -1,3 +1,6 @@
+#![warn(
+    clippy::all
+)]
 
 mod store;
 mod types;

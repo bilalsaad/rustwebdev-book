@@ -53,8 +53,8 @@ pub async fn delete_question(
     id: String,
     store: Store,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    match store.questions.write().await.remove(&&QuestionId(id)) {
+    match store.questions.write().await.remove(&QuestionId(id)) {
         Some(_) => Ok(warp::reply::with_status("Question deleted", StatusCode::OK)),
-        None => return Err(warp::reject::custom(Error::QuestionNotFound)),
+        None => Err(warp::reject::custom(Error::QuestionNotFound)),
     }
 }
