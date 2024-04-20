@@ -1,5 +1,4 @@
 
-mod error;
 mod store;
 mod types;
 mod routes;
@@ -9,6 +8,7 @@ use warp::{
     http::Method,
     Filter,
 };
+use handle_errors::return_error;
 
 #[tokio::main]
 async fn main() {
@@ -63,7 +63,7 @@ async fn main() {
         .or(update_question)
         .or(delete_question)
         .with(cors)
-        .recover(error::return_error);
+        .recover(return_error);
 
     warp::serve(routes).run(([127, 0, 0, 1], 3031)).await;
 }
