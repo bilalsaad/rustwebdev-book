@@ -14,7 +14,7 @@ async fn main() {
     let log_filter =
         std::env::var("RUST_LOG").unwrap_or_else(|_| "book=info,warp=error".to_owned());
 
-    let store = Store::new("postgres://postgres:admin1@localhost:9003/rustwebdev").await;
+    let store = Store::new("postgres://postgres:admin1@localhost:9003").await;
 
     let store_filter = warp::any().map(move || store.clone());
 
