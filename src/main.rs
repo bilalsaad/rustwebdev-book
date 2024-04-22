@@ -55,7 +55,7 @@ async fn main() {
         .and(warp::path("answers"))
         .and(warp::path::end())
         .and(store_filter.clone())
-        .and(warp::body::form())
+        .and(warp::body::json())
         .and_then(routes::answer::add_answer);
 
     let update_question = warp::put()
