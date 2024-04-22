@@ -9,8 +9,7 @@ use warp::{
 pub enum Error {
     ParseError(std::num::ParseIntError),
     MissingParameters,
-    QuestionNotFound,
-    DatabaseQueryError(sqlx::Error),
+    DatabaseQueryError(String),
 }
 
 impl std::fmt::Display for Error {
@@ -20,9 +19,8 @@ impl std::fmt::Display for Error {
                 write!(f, "Cannot parse parameter: {}", err)
             }
             Error::MissingParameters => write!(f, "Missing parameter"),
-            Error::QuestionNotFound => write!(f, "Question not found"),
-            Error::DatabaseQueryError(ref err) => {
-                write!(f, "Query failed : {}", err)
+            Error::DatabaseQueryError(ref s) => {
+                write!(f, "INTERNAL ERROR: {} check server logs", s.clone())
             }
 
         }

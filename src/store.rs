@@ -55,7 +55,9 @@ impl Store {
             Ok(questions) => Ok(questions),
             Err(e) => {
                 tracing::event!(tracing::Level::ERROR, "{:?}", e);
-                Err(Error::DatabaseQueryError(e))
+                Err(Error::DatabaseQueryError(format!(
+                    "failed to query questions"
+                )))
             }
         }
     }
@@ -69,7 +71,7 @@ impl Store {
             RETURNING id, title, content, tags
             ",
         )
-        .bind(new_question.title)
+        .bind(new_question.title.clone())
         .bind(new_question.content)
         .bind(new_question.tags)
         .map(|row: PgRow| Question {
@@ -84,7 +86,10 @@ impl Store {
             Ok(questions) => Ok(questions),
             Err(e) => {
                 tracing::event!(tracing::Level::ERROR, "{:?}", e);
-                Err(Error::DatabaseQueryError(e))
+                Err(Error::DatabaseQueryError(format!(
+                    "Failed to add question {} ",
+                    new_question.title
+                )))
             }
         }
     }
@@ -118,7 +123,10 @@ impl Store {
             Ok(question) => Ok(question),
             Err(e) => {
                 tracing::event!(tracing::Level::ERROR, "{:?}", e);
-                Err(Error::DatabaseQueryError(e))
+                Err(Error::DatabaseQueryError(format!(
+                    "failed to update question {} ",
+                    question_id
+                )))
             }
         }
     }
@@ -130,7 +138,13 @@ impl Store {
             .await
         {
             Ok(_) => None,
-            Err(e) => Some(Error::DatabaseQueryError(e)),
+            Err(e) => {
+                tracing::event!(tracing::Level::ERROR, "{:?}", e);
+                Some(Error::DatabaseQueryError(format!(
+                    "failed to delete question {}",
+                    question_id
+                )))
+            }
         }
     }
 
@@ -157,7 +171,10 @@ impl Store {
             Ok(answer) => Ok(answer),
             Err(e) => {
                 tracing::event!(tracing::Level::ERROR, "{:?}", e);
-                Err(Error::DatabaseQueryError(e))
+                Err(Error::DatabaseQueryError(format!(
+                    "Failed to add answer for question {} ",
+                    new_answer.question_id.0
+                )))
             }
         }
     }
