@@ -11,10 +11,15 @@ use warp::{http::Method, Filter};
 
 #[tokio::main]
 async fn main() {
-    let log_filter =
-        std::env::var("RUST_LOG").unwrap_or_else(|_| "book=info,warp=error".to_owned());
+    let log_filter = std::env::var("RUST_LOG")
+        .unwrap_or_else(|_| "handle_errors=warn,book=info,warp=error".to_owned());
 
     let store = Store::new("postgres://postgres:admin1@localhost:9003").await;
+
+    sqlx::migrate!()
+        .run(&store.clone().connection)
+        .await
+        .expect("Cannot run migration");
 
     let store_filter = warp::any().map(move || store.clone());
 
