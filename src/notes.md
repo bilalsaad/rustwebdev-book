@@ -32,3 +32,11 @@ CREATE TABLE IF NOT EXISTS answers (
 
 getting it to work was a pain -- the path to the DB needed to be without the /<db_name>
 and Im not sure if I needed to do somethign with the schema acls.
+
+
+# chapter 8
+
+
+The API key is expected to be in an env variable called BAD_WORDS_API_KEY.
+there's one in the secrets directory which isn't checked in.
+

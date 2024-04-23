@@ -1,5 +1,6 @@
 #![warn(clippy::all)]
 
+mod profanity;
 mod routes;
 mod store;
 mod types;

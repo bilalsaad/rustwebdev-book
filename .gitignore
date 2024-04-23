@@ -2,3 +2,4 @@
 /src/*.swp
 *.swp
 stderr.log
+secrets/*
