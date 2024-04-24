@@ -6,6 +6,7 @@ use sqlx::{
 };
 
 use crate::types::{
+    account::Account,
     answer::{Answer, AnswerId, NewAnswer},
     question::{NewQuestion, Question, QuestionId},
 };
@@ -174,6 +175,35 @@ impl Store {
                 Err(Error::DatabaseQueryError(format!(
                     "Failed to add answer for question {} ",
                     new_answer.question_id.0
+                )))
+            }
+        }
+    }
+
+    // ------ ------- Account Resource --------
+    /// Adds a new account to the store.
+    ///
+    /// Not idempotent if an email exists an error is returned.
+    /// Password is salted
+    ///
+    /// Returns None on success and Some(err) if fail to add.
+    pub async fn add_account(&self, account: Account) -> Option<Error> {
+        match sqlx::query(
+            "INSERT INTO accounts (email, password)
+            VALUES ($1, $2)
+            ",
+        )
+        .bind(account.email.clone())
+        .bind(account.password)
+        .execute(&self.connection)
+        .await
+        {
+            Ok(_) => None,
+            Err(e) => {
+                tracing::event!(tracing::Level::ERROR, "{:?}", e);
+                Some(Error::DatabaseQueryError(format!(
+                    "Failed to add account for {} ",
+                    account.email
                 )))
             }
         }
