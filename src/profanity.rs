@@ -1,3 +1,5 @@
+use reqwest_middleware::ClientBuilder;
+use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -24,15 +26,19 @@ struct BadWordsResponse {
 }
 
 pub async fn check_profanity(content: String) -> Result<String, handle_errors::Error> {
+    let retry_policy = ExponentialBackoff::builder().build_with_max_retries(3);
     let api_key = std::env::var("BAD_WORDS_API_KEY").unwrap_or("invalud_api_key".to_string());
-    let client = reqwest::Client::new();
+
+    let client = ClientBuilder::new(reqwest::Client::new())
+        .with(RetryTransientMiddleware::new_with_policy(retry_policy))
+        .build();
     let res = client
         .post("https://api.apilayer.com/bad_words?censor_character=*")
         .header("apikey", api_key)
         .body(content)
         .send()
         .await
-        .map_err(|e| handle_errors::Error::ExternalAPIError(e))?;
+        .map_err(|e| handle_errors::Error::MiddlewareReqwesAPIError(e))?;
 
     if !res.status().is_success() {
         if res.status().is_client_error() {
