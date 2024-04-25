@@ -1,4 +1,13 @@
 use serde::{Deserialize, Serialize};
+use chrono::prelude::*;
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Session {
+    pub exp: DateTime<Utc>,
+    pub account_id: AccountId,
+    // not before 
+    pub nbf: DateTime<Utc>,
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Account {

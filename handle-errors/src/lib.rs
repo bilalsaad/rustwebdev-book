@@ -15,6 +15,7 @@ pub enum Error {
     ParseError(std::num::ParseIntError),
     MissingParameters,
     WrongPassword,
+    CannotDecryptToken,
     ArgonLibraryError(ArgonError),
     DatabaseQueryError(String),
     ExternalAPIError(ReqwestError),
@@ -46,6 +47,9 @@ impl std::fmt::Display for Error {
             Error::WrongPassword => write!(f, "Wrong password "),
             Error::ArgonLibraryError(_) => {
                 write!(f, "cannot verify password")
+            }
+            Error::CannotDecryptToken => {
+                write!(f, "cannot decrypt token password")
             }
             Error::DatabaseQueryError(ref s) => {
                 write!(f, "INTERNAL ERROR: {} check server logs", s.clone())
