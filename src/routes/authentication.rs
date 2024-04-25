@@ -1,7 +1,10 @@
 use crate::store::Store;
-use crate::types::account::Account;
+use crate::types::account::{Account, AccountId};
+
+use chrono::Utc;
 
 use argon2::Config;
+use handle_errors::Error;
 use rand::Rng;
 use warp::http::StatusCode;
 
@@ -22,9 +25,46 @@ pub async fn register(store: Store, account: Account) -> Result<impl warp::Reply
     }
 }
 
+/// Logs user in.
+/// User stays logged in for X
+pub async fn login(store: Store, login: Account) -> Result<impl warp::Reply, warp::Rejection> {
+    match store.get_account(login.email).await {
+        Ok(account) => match verify_password(&account.password, login.password.as_bytes()) {
+            Ok(verified) => {
+                if verified {
+                    Ok(warp::reply::json(&issue_token(
+                        account.id.expect("id not found"),
+                    )))
+                } else {
+                    Err(warp::reject::custom(Error::WrongPassword))
+                }
+            }
+            Err(e) => Err(warp::reject::custom(Error::ArgonLibraryError(e))),
+        },
+        Err(e) => Err(warp::reject::custom(e)),
+    }
+}
+
 fn hash_password(pwd: &[u8]) -> String {
     let salt = rand::thread_rng().gen::<[u8; 32]>();
     let config = Config::default();
 
     argon2::hash_encoded(pwd, &salt, &config).unwrap()
+}
+
+fn verify_password(hash: &str, pwd: &[u8]) -> Result<bool, argon2::Error> {
+    argon2::verify_encoded(hash, pwd)
+}
+
+fn issue_token(account_id: AccountId) -> String {
+    let current_date_time = Utc::now();
+    let dt = current_date_time + chrono::Duration::days(1);
+
+    paseto::tokens::PasetoBuilder::new()
+        .set_encryption_key(&Vec::from("RANDOM WORDS WINTER MACINTOSH PC".as_bytes()))
+        .set_expiration(&dt)
+        .set_not_before(&Utc::now())
+        .set_claim("account_id", serde_json::json!(account_id))
+        .build()
+        .expect("Failed to construct paseto token w/ builder!")
 }

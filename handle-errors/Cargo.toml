@@ -8,3 +8,4 @@ warp = "0.3"
 reqwest = "0.12"
 tracing = { version="0.1", features = ["log"] }
 reqwest-middleware = "0.3"
+rust-argon2 = "1.0"
