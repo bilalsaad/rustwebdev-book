@@ -5,17 +5,45 @@ mod routes;
 mod store;
 mod types;
 
+use config::Config;
 use handle_errors::return_error;
 use store::Store;
 use tracing_subscriber::fmt::format::FmtSpan;
 use warp::{http::Method, Filter};
 
+#[derive(Debug, Default, serde::Deserialize, PartialEq)]
+struct Args {
+    log_level: String,
+    /// URL for the postgres DB
+    database_host: String,
+    /// PORT number for DB.
+    database_port: u16,
+    /// Database name
+    database_name: String,
+    /// Web server PORT
+    port: u16,
+}
+
 #[tokio::main]
 async fn main() {
-    let log_filter = std::env::var("RUST_LOG")
-        .unwrap_or_else(|_| "handle_errors=warn,book=info,warp=info".to_owned());
+    let config = Config::builder()
+        .add_source(config::File::with_name("setup"))
+        .build()
+        .unwrap();
+    let config = config.try_deserialize::<Args>().unwrap();
 
-    let store = Store::new("postgres://postgres:admin1@localhost:9003").await;
+    let log_filter = std::env::var("RUST_LOG").unwrap_or_else(|_| {
+        format!(
+            "handle_errors={},book={},warp={}",
+            config.log_level, config.log_level, config.log_level
+        )
+    });
+
+    let store = Store::new(&format!(
+        "postgres://postgres:admin1@{}:{}",
+        config.database_host, config.database_port
+    ))
+    .await;
 
     sqlx::migrate!()
         .run(&store.clone().connection)
