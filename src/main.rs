@@ -5,43 +5,47 @@ mod routes;
 mod store;
 mod types;
 
-use config::Config;
 use handle_errors::return_error;
 use store::Store;
 use tracing_subscriber::fmt::format::FmtSpan;
 use warp::{http::Method, Filter};
 
-#[derive(Debug, Default, serde::Deserialize, PartialEq)]
+use clap::Parser;
+
+/// Q&A web service API
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about=None)]
 struct Args {
+    /// Which errors to log (info warn or error)
+    #[clap(short, long, default_value = "warn")]
     log_level: String,
     /// URL for the postgres DB
+    #[clap(long, default_value = "localhost")]
     database_host: String,
     /// PORT number for DB.
+    #[clap(long, default_value = "9003")]
     database_port: u16,
     /// Database name
+    #[clap(long, default_value = "")]
     database_name: String,
     /// Web server PORT
+    #[clap(long, default_value = "3031")]
     port: u16,
 }
 
 #[tokio::main]
 async fn main() {
-    let config = Config::builder()
-        .add_source(config::File::with_name("setup"))
-        .build()
-        .unwrap();
-    let config = config.try_deserialize::<Args>().unwrap();
-
+    let args = Args::parse();
     let log_filter = std::env::var("RUST_LOG").unwrap_or_else(|_| {
         format!(
             "handle_errors={},book={},warp={}",
-            config.log_level, config.log_level, config.log_level
+            args.log_level, args.log_level, args.log_level
         )
     });
 
     let store = Store::new(&format!(
         "postgres://postgres:admin1@{}:{}",
-        config.database_host, config.database_port
+        args.database_host, args.database_port
     ))
     .await;
 
@@ -136,5 +140,5 @@ async fn main() {
         .with(warp::trace::request())
         .recover(return_error);
 
-    warp::serve(routes).run(([127, 0, 0, 1], 3031)).await;
+    warp::serve(routes).run(([127, 0, 0, 1], args.port)).await;
 }

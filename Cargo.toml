@@ -20,4 +20,5 @@ rand = "0.8.4"
 rust-argon2 = "1.0"
 paseto = "2.0.2+1.0.3"
 chrono = "0.4.19"
-config = { version = "0.14.0", features = ["toml"] }
+clap = { version = "4.5.4", features = ["derive"] }
+proc-macro-crate = "3.1.0"
