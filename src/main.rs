@@ -5,12 +5,15 @@ mod routes;
 mod store;
 mod types;
 
+use std::env;
+
 use handle_errors::return_error;
 use store::Store;
 use tracing_subscriber::fmt::format::FmtSpan;
 use warp::{http::Method, Filter};
 
 use clap::Parser;
+use dotenv;
 
 /// Q&A web service API
 #[derive(Parser, Debug)]
@@ -28,13 +31,23 @@ struct Args {
     /// Database name
     #[clap(long, default_value = "")]
     database_name: String,
-    /// Web server PORT
-    #[clap(long, default_value = "3031")]
-    port: u16,
 }
 
 #[tokio::main]
 async fn main() {
+    dotenv::dotenv().ok();
+    if let Err(_) = env::var("BAD_WORDS_API_KEY") {
+        panic!("BadWords API key not set");
+    }
+    if let Err(_) = env::var("PASETO_KEY") {
+        panic!("PASETO key not set");
+    }
+
+    let port = std::env::var("PORT")
+        .ok()
+        .map(|v| v.parse::<u16>())
+        .unwrap_or(Ok(3031));
+
     let args = Args::parse();
     let log_filter = std::env::var("RUST_LOG").unwrap_or_else(|_| {
         format!(
@@ -140,5 +153,5 @@ async fn main() {
         .with(warp::trace::request())
         .recover(return_error);
 
-    warp::serve(routes).run(([127, 0, 0, 1], args.port)).await;
+    warp::serve(routes).run(([127, 0, 0, 1], 3031)).await;
 }

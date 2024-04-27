@@ -27,7 +27,7 @@ struct BadWordsResponse {
 
 pub async fn check_profanity(content: String) -> Result<String, handle_errors::Error> {
     let retry_policy = ExponentialBackoff::builder().build_with_max_retries(3);
-    let api_key = std::env::var("BAD_WORDS_API_KEY").unwrap_or("invalud_api_key".to_string());
+    let api_key = std::env::var("BAD_WORDS_API_KEY").unwrap();
 
     let client = ClientBuilder::new(reqwest::Client::new())
         .with(RetryTransientMiddleware::new_with_policy(retry_policy))
