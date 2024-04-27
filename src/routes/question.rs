@@ -1,5 +1,6 @@
 use crate::profanity::check_profanity;
 use crate::store::Store;
+use crate::types::account::Session;
 use crate::types::pagination::Pagination;
 use crate::types::question::NewQuestion;
 use crate::types::{pagination::extract_pagination, question::Question};
@@ -33,10 +34,13 @@ pub async fn get_questions(
     Ok(warp::reply::json(&res))
 }
 
+#[instrument]
 pub async fn add_question(
+    session: Session,
     store: Store,
     new_question: NewQuestion,
 ) -> Result<impl warp::Reply, warp::Rejection> {
+    event!(target: "book", Level::INFO, "adding question {:?}", new_question);
     let title = match check_profanity(new_question.title).await {
         Ok(res) => res,
         Err(e) => return Err(warp::reject::custom(e)),
@@ -53,7 +57,7 @@ pub async fn add_question(
         tags: new_question.tags,
     };
 
-    if let Err(e) = store.add_question(new_question).await {
+    if let Err(e) = store.add_question(new_question, session.account_id).await {
         return Err(warp::reject::custom(e));
     }
 
@@ -63,9 +67,14 @@ pub async fn add_question(
 /// Update handler for Question resource.
 pub async fn update_question(
     id: i32,
+    session: Session,
     store: Store,
     question: Question,
 ) -> Result<impl warp::Reply, warp::Rejection> {
+    if !store.is_question_owner(id, &session.account_id).await? {
+        return Err(warp::reject::custom(handle_errors::Error::Unauthorized));
+    }
+
     let title = check_profanity(question.title);
     let content = check_profanity(question.content);
 
@@ -86,14 +95,25 @@ pub async fn update_question(
         tags: question.tags,
     };
 
-    match store.update_question(question, id).await {
+    match store
+        .update_question(question, id, session.account_id)
+        .await
+    {
         Ok(res) => Ok(warp::reply::json(&res)),
         Err(e) => Err(warp::reject::custom(e)),
     }
 }
 
 /// Delete handler for Question
-pub async fn delete_question(id: i32, store: Store) -> Result<impl warp::Reply, warp::Rejection> {
+pub async fn delete_question(
+    id: i32,
+    session: Session,
+    store: Store,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    if !store.is_question_owner(id, &session.account_id).await? {
+        return Err(warp::reject::custom(handle_errors::Error::Unauthorized));
+    }
+
     match store.delete_question(id).await {
         None => Ok(warp::reply::with_status(
             format!("Question {} deleted", id),

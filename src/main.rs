@@ -13,7 +13,7 @@ use warp::{http::Method, Filter};
 #[tokio::main]
 async fn main() {
     let log_filter = std::env::var("RUST_LOG")
-        .unwrap_or_else(|_| "handle_errors=warn,book=info,warp=error".to_owned());
+        .unwrap_or_else(|_| "handle_errors=warn,book=info,warp=info".to_owned());
 
     let store = Store::new("postgres://postgres:admin1@localhost:9003").await;
 
@@ -61,8 +61,8 @@ async fn main() {
     let add_answer = warp::post()
         .and(warp::path("answers"))
         .and(warp::path::end())
-        .and(store_filter.clone())
         .and(routes::authentication::auth())
+        .and(store_filter.clone())
         .and(warp::body::json())
         .and_then(routes::answer::add_answer);
 

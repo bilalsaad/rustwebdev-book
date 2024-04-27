@@ -5,4 +5,3 @@ CREATE TABLE IF NOT EXISTS answers (
     question_id integer REFERENCES questions,
     created_on TIMESTAMP NOT NULL DEFAULT NOW()
 );
-

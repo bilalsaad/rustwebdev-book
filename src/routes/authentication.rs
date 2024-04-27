@@ -8,6 +8,7 @@ use chrono::Utc;
 use argon2::Config;
 use handle_errors::Error;
 use rand::Rng;
+use tracing::{instrument, Level};
 use warp::http::StatusCode;
 use warp::Filter;
 
@@ -72,20 +73,32 @@ fn issue_token(account_id: AccountId) -> String {
         .expect("Failed to construct paseto token w/ builder!")
 }
 
-pub fn auth() ->
-impl Filter<Extract = (Session,), Error = warp::Rejection> + Clone {
+#[instrument]
+pub fn auth() -> impl Filter<Extract = (Session,), Error = warp::Rejection> + Clone {
     warp::header::<String>("Authorization").and_then(|token: String| {
         let token = match verify_token(token) {
             Ok(t) => t,
-            Err(_) => return future::ready(Err(warp::reject::reject()))
+            Err(e) => {
+                tracing::event!(target:"book", Level::ERROR, "error when auth {:?}", e);
+                return future::ready(Err(warp::reject::custom(e)));
+            }
         };
         future::ready(Ok(token))
     })
 }
 
-fn verify_token(token:String) -> Result<Session, handle_errors::Error> {
-    let token = paseto::tokens::validate_local_token(&token, None, "RANDOM WORDS WINTER MACINTOSH PC".as_bytes(), &paseto::tokens::TimeBackend::Chrono)
-        .map_err(|_| handle_errors::Error::CannotDecryptToken)?;
+#[instrument]
+fn verify_token(token: String) -> Result<Session, handle_errors::Error> {
+    let token = paseto::tokens::validate_local_token(
+        &token,
+        None,
+        "RANDOM WORDS WINTER MACINTOSH PC".as_bytes(),
+        &paseto::tokens::TimeBackend::Chrono,
+    )
+    .map_err(|e| {
+        tracing::event!(target:"book", Level::ERROR, "error when validate token: {}", e);
+        handle_errors::Error::CannotDecryptToken
+    })?;
 
-    serde_json::from_value::<Session>(token).map_err(|_| {handle_errors::Error::CannotDecryptToken})
+    serde_json::from_value::<Session>(token).map_err(|_| handle_errors::Error::CannotDecryptToken)
 }
